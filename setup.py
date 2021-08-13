@@ -1,24 +1,15 @@
 """Setup module installation."""
 
 import os
-import re
 
 from setuptools import find_packages, setup
 
 if __name__ == "__main__":
     MODULE_NAME = "simplebot_groups"
-    DESC = "A plugin for SimpleBot, a Delta Chat(http://delta.chat/) bot"
-
-    init_file = os.path.join(MODULE_NAME, "__init__.py")
-    with open(init_file) as fh:
-        version = re.search(r"__version__ = \'(.*?)\'", fh.read(), re.M).group(1)
+    DESC = "Public groups and channels directory for Delta Chat"
 
     with open("README.rst") as fh:
         long_description = fh.read()
-    with open("CHANGELOG.rst") as fh:
-        long_description += fh.read()
-    with open("LICENSE") as fh:
-        long_description += fh.read()
 
     setup(
         name=MODULE_NAME,
@@ -32,6 +23,9 @@ if __name__ == "__main__":
         description=DESC,
         long_description=long_description,
         long_description_content_type="text/x-rst",
+        author="adbenitez",
+        author_email="adbenitez@nauta.cu",
+        url=f"https://github.com/adbenitez/{MODULE_NAME}",
         keywords="simplebot plugin deltachat",
         license="MPL",
         classifiers=[
