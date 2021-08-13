@@ -135,6 +135,10 @@ def publish_cmd(message: Message, replies: Replies) -> None:
 
     To make your group private again just remove me from the group.
     """
+    if not message.chat.is_group():
+        replies.add(text="❌ This is not a group")
+        return
+
     chan = db.get_channel(message.chat.id)
     if chan:
         replies.add(text="❌ This is a channel")
