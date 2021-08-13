@@ -367,25 +367,24 @@ def adminchan_cmd(
         replies.add(text="❌ Invalid ID")
 
 
-def topic_cmd(bot: DeltaBot, args: list, message: Message, replies: Replies) -> None:
+def topic_cmd(bot: DeltaBot, payload: str, message: Message, replies: Replies) -> None:
     """Show or change group/channel topic."""
     if not message.chat.is_group():
         replies.add(text="❌ This is not a group")
         return
 
-    if args:
-        new_topic = " ".join(args)
+    if payload:
         max_size = int(_getdefault(bot, "max_topic_size"))
-        if len(new_topic) > max_size:
-            new_topic = new_topic[:max_size] + "..."
+        if len(payload) > max_size:
+            payload = payload[:max_size] + "..."
 
         text = "** {} changed topic to:\n{}"
 
         ch = db.get_channel(message.chat.id)
         if ch and ch["admin"] == message.chat.id:
             name = _get_name(bot, message.get_sender_contact())
-            text = text.format(name, new_topic)
-            db.set_channel_topic(ch["id"], new_topic)
+            text = text.format(name, payload)
+            db.set_channel_topic(ch["id"], payload)
             for chat in _get_cchats(bot, ch["id"]):
                 replies.add(text=text, chat=chat)
             replies.add(text=text)
@@ -399,8 +398,8 @@ def topic_cmd(bot: DeltaBot, args: list, message: Message, replies: Replies) -> 
         if not g:
             replies.add(text="❌ This group is not public")
             return
-        db.upsert_group(g["id"], new_topic)
-        replies.add(text=text.format(addr, new_topic))
+        db.upsert_group(g["id"], payload)
+        replies.add(text=text.format(addr, payload))
         return
 
     g = db.get_channel(message.chat.id) or db.get_group(message.chat.id)
