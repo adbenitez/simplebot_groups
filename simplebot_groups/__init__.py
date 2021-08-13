@@ -28,28 +28,32 @@ def deltabot_init(bot: DeltaBot) -> None:
     global db
     db = _get_db(bot)
 
-    _getdefault(bot, "max_group_size", "999999")
     _getdefault(bot, "max_topic_size", "500")
-    _getdefault(bot, "allow_groups", "1")
-    _getdefault(bot, "max_file_size", "504800")
-    allow_channels = _getdefault(bot, "allow_channels", "1")
+    _getdefault(bot, "max_file_size", "1048576")
+    _getdefault(bot, "show_sender", "0")
 
+    prefix = _getdefault(bot, "command_prefix")
+
+    allow_groups = _getdefault(bot, "allow_groups", "1")
     bot.commands.register(
-        func=cmd_chan, name="/group_chan", admin=(allow_channels != "1")
+        func=publish_cmd, name=f"/{prefix}publish", admin=(allow_groups != "1")
     )
+    allow_channels = _getdefault(bot, "allow_channels", "1")
+    bot.commands.register(
+        func=chan_cmd, name=f"/{prefix}chan", admin=(allow_channels != "1")
+    )
+    bot.commands.register(func=remove_cmd, name=f"/{prefix}remove")
+    bot.commands.register(func=topic_cmd, name=f"/{prefix}topic")
+    bot.commands.register(func=adminchan_cmd, name=f"/{prefix}adminchan", admin=True)
+    bot.commands.register(func=join_cmd, name=f"/{prefix}join")
+    bot.commands.register(func=me_cmd, name=f"/{prefix}me")
+    bot.commands.register(func=list_cmd, name=f"/{prefix}list")
+    bot.commands.register(func=info_cmd, name=f"/{prefix}info")
 
 
 @simplebot.hookimpl
 def deltabot_start(bot: DeltaBot) -> None:
     Thread(target=_process_channels, args=(bot,), daemon=True).start()
-
-
-@simplebot.hookimpl
-def deltabot_member_added(
-    bot: DeltaBot, chat: Chat, contact: Contact, actor: Contact
-) -> None:
-    if contact == bot.self_contact and not db.get_channel(chat.id):
-        _add_group(bot, chat.id, as_admin=bot.is_admin(actor.addr))
 
 
 @simplebot.hookimpl
@@ -105,7 +109,7 @@ def deltabot_ban(bot: DeltaBot, contact: Contact) -> None:
                 chat.remove_contact(contact)
 
 
-@simplebot.filter(name=__name__)
+@simplebot.filter
 def filter_messages(bot: DeltaBot, message: Message, replies: Replies) -> None:
     """Process messages sent to channels."""
     ch = db.get_channel(message.chat.id)
@@ -126,15 +130,27 @@ def filter_messages(bot: DeltaBot, message: Message, replies: Replies) -> None:
         replies.add(text="❌ Only channel operators can do that.")
 
 
-@simplebot.command
-def group_info(bot: DeltaBot, message: Message, replies: Replies) -> None:
+def publish_cmd(message: Message, replies: Replies) -> None:
+    """Send this command in a group to make it public."""
+    chan = db.get_channel(message.chat.id)
+    if chan:
+        replies.add(text="❌ This is a channel")
+    else:
+        group = db.get_group(message.chat.id)
+        if group:
+            replies.add(text="❌ This group is already public.")
+        else:
+            db.upsert_group(message.chat.id, None)
+            replies.add(text="☑️ Group published")
+
+
+def info_cmd(bot: DeltaBot, message: Message, replies: Replies) -> None:
     """Show the group/channel info."""
     if not message.chat.is_group():
-        replies.add(text="❌ This is not a group")
+        replies.add(text="❌ This is not a group or channel")
         return
 
-    text = "{0}\n👤 {1}\n{2}\n\n"
-    text += "⬅️ /group_remove_{3}{4}\n➡️ /group_join_{3}{4}"
+    prefix = _getdefault(bot, "command_prefix")
 
     ch = db.get_channel(message.chat.id)
     if ch:
@@ -142,35 +158,32 @@ def group_info(bot: DeltaBot, message: Message, replies: Replies) -> None:
             map(lambda g: len(g.get_contacts()) - 1, _get_cchats(bot, ch["id"]))
         )
         replies.add(
-            text=text.format(ch["name"], count, ch["topic"] or "-", "c", ch["id"])
+            text=f"{ch['name']}\n👤 {count}\n{ch['topic'] or '-'}\n\n⬅️ /{prefix}remove_c{ch['id']}\n➡️ /{prefix}join_c{ch['id']}"
         )
         return
 
-    g = db.get_group(message.chat.id)
-    if not g:
-        addr = message.get_sender_contact().addr
-        _add_group(bot, message.chat.id, as_admin=bot.is_admin(addr))
-        g = db.get_group(message.chat.id)
-        assert g is not None
+    group = db.get_group(message.chat.id)
+    if not group:
+        replies.add(text="❌ This group is not public")
+        return
 
-    chat = bot.get_chat(g["id"])
+    chat = bot.get_chat(group["id"])
     img = qrcode.make(chat.get_join_qr())
     buffer = io.BytesIO()
     img.save(buffer, format="jpeg")
     buffer.seek(0)
-    count = len(bot.get_chat(g["id"]).get_contacts())
+    count = len(bot.get_chat(group["id"]).get_contacts())
     replies.add(
-        text=text.format(chat.get_name(), count, g["topic"] or "-", "g", g["id"]),
+        text=f"{chat.get_name()}\n👤 {count}\n{group['topic'] or '-'}\n\n⬅️ /{prefix}remove_g{group['id']}\n➡️ /{prefix}join_g{group['id']}",
         filename="img.jpg",
         bytefile=buffer,
     )
 
 
-@simplebot.command
-def group_list(bot: DeltaBot, replies: Replies) -> None:
+def list_cmd(bot: DeltaBot, replies: Replies) -> None:
     """Show the list of public groups and channels."""
 
-    def get_list(chats):
+    def get_list(bot_addr: str, chats: list) -> str:
         return Template(
             """
 <style>
@@ -182,7 +195,7 @@ def group_list(bot: DeltaBot, replies: Replies) -> None:
 .w3-large{font-size:18px !important}
 .w3-delta,.w3-hover-delta:hover{color:#fff !important;background-color:#5a6f78 !important}
 </style>
-{% for name, topic, gid, last_pub, bot_addr, count in chats %}
+{% for name, topic, gid, last_pub, count in chats %}
 <div class="w3-card-2">
 <header class="w3-container w3-delta">
 <h2>{{ name }}</h2>
@@ -194,12 +207,14 @@ def group_list(bot: DeltaBot, replies: Replies) -> None:
 {% endif %}
 <p>{{ topic }}</p>
 </div>
-<a class="w3-btn w3-large" href="mailto:{{ bot_addr }}?body=/group_remove_{{ gid }}">« Leave</a>
-<a class="w3-btn w3-large w3-right" href="mailto:{{ bot_addr }}?body=/group_join_{{ gid }}">Join »</a>
+<a class="w3-btn w3-large" href="mailto:{{ bot_addr }}?body=/{{ prefix }}remove_{{ gid }}">« Leave</a>
+<a class="w3-btn w3-large w3-right" href="mailto:{{ bot_addr }}?body=/{{ prefix }}join_{{ gid }}">Join »</a>
 </div>
 {% endfor %}
 """
-        ).render(chats=chats)
+        ).render(
+            bot_addr=bot_addr, prefix=_getdefault(bot, "command_prefix"), chats=chats
+        )
 
     groups = []
     for g in db.get_groups():
@@ -213,7 +228,6 @@ def group_list(bot: DeltaBot, replies: Replies) -> None:
                 g["topic"] or "-",
                 "g{}".format(chat.id),
                 None,
-                bot.self_contact.addr,
                 len(chat.get_contacts()),
             )
         )
@@ -221,7 +235,7 @@ def group_list(bot: DeltaBot, replies: Replies) -> None:
     if groups:
         groups.sort(key=lambda g: g[-1], reverse=True)
         text = "⬇️ Groups ({}) ⬇️".format(total_groups)
-        replies.add(text=text, html=get_list(groups))
+        replies.add(text=text, html=get_list(bot.self_contact.addr, groups))
 
     channels = []
     for ch in db.get_channels():
@@ -238,7 +252,6 @@ def group_list(bot: DeltaBot, replies: Replies) -> None:
                 ch["topic"] or "-",
                 "c{}".format(ch["id"]),
                 last_pub,
-                bot.self_contact.addr,
                 count,
             )
         )
@@ -246,14 +259,13 @@ def group_list(bot: DeltaBot, replies: Replies) -> None:
     if channels:
         channels.sort(key=lambda g: g[-1], reverse=True)
         text = "⬇️ Channels ({}) ⬇️".format(total_channels)
-        replies.add(text=text, html=get_list(channels))
+        replies.add(text=text, html=get_list(bot.self_contact.addr, channels))
 
     if 0 == total_groups == total_channels:
         replies.add(text="❌ Empty List")
 
 
-@simplebot.command
-def group_me(bot: DeltaBot, message: Message, replies: Replies) -> None:
+def me_cmd(bot: DeltaBot, message: Message, replies: Replies) -> None:
     """Show the list of groups and channels you are in."""
     sender = message.get_sender_contact()
     groups = []
@@ -272,16 +284,18 @@ def group_me(bot: DeltaBot, message: Message, replies: Replies) -> None:
                 groups.append((ch["name"], "c{}".format(ch["id"])))
                 break
 
-    text = "{0}:\n⬅️ /group_remove_{1}\n\n"
-    replies.add(text="".join(text.format(*g) for g in groups) or "Empty list")
+    prefix = _getdefault(bot, "command_prefix")
+    text = "{0}:\n⬅️ /{1}remove_{2}\n\n"
+    replies.add(
+        text="".join(text.format(name, prefix, id) for name, id in groups)
+        or "Empty list"
+    )
 
 
-@simplebot.command
-def group_join(bot: DeltaBot, args: list, message: Message, replies: Replies) -> None:
+def join_cmd(bot: DeltaBot, args: list, message: Message, replies: Replies) -> None:
     """Join the given group/channel."""
     sender = message.get_sender_contact()
-    is_admin = bot.is_admin(sender.addr)
-    text = "{}\n\n{}\n\n⬅️ /group_remove_{}"
+    prefix = _getdefault(bot, "command_prefix")
     arg = args[0] if args else ""
     if arg.startswith("g"):
         gid = int(arg[1:])
@@ -296,14 +310,12 @@ def group_join(bot: DeltaBot, args: list, message: Message, replies: Replies) ->
                     ),
                     chat=g,
                 )
-            elif len(contacts) < int(_getdefault(bot, "max_group_size")) or is_admin:
+            else:
                 _add_contact(g, sender)
                 replies.add(
                     chat=bot.get_chat(sender),
-                    text=text.format(g.get_name(), gr["topic"] or "-", arg),
+                    text=f"{g.get_name()}\n\n{gr['topic'] or '-'}\n\n⬅️ /{prefix}remove_{arg}",
                 )
-            else:
-                replies.add(text="❌ Group is full")
             return
     elif arg.startswith("c"):
         gid = int(arg[1:])
@@ -323,14 +335,16 @@ def group_join(bot: DeltaBot, args: list, message: Message, replies: Replies) ->
             img = bot.get_chat(ch["id"]).get_profile_image()
             if img and os.path.exists(img):
                 g.set_profile_image(img)
-            replies.add(text=text.format(ch["name"], ch["topic"] or "-", arg), chat=g)
+            replies.add(
+                text="{ch['name']}\n\n{ch['topic'] or '-'}\n\n⬅️ /{prefix}remove_{arg}",
+                chat=g,
+            )
             return
 
     replies.add(text="❌ Invalid ID")
 
 
-@simplebot.command(admin=True)
-def group_adminchan(
+def adminchan_cmd(
     bot: DeltaBot, args: list, message: Message, replies: Replies
 ) -> None:
     """Join the admin group of the given channel."""
@@ -344,8 +358,7 @@ def group_adminchan(
         replies.add(text="❌ Invalid ID")
 
 
-@simplebot.command
-def group_topic(bot: DeltaBot, args: list, message: Message, replies: Replies) -> None:
+def topic_cmd(bot: DeltaBot, args: list, message: Message, replies: Replies) -> None:
     """Show or change group/channel topic."""
     if not message.chat.is_group():
         replies.add(text="❌ This is not a group")
@@ -361,7 +374,7 @@ def group_topic(bot: DeltaBot, args: list, message: Message, replies: Replies) -
 
         ch = db.get_channel(message.chat.id)
         if ch and ch["admin"] == message.chat.id:
-            name = _get_name(message.get_sender_contact())
+            name = _get_name(bot, message.get_sender_contact())
             text = text.format(name, new_topic)
             db.set_channel_topic(ch["id"], new_topic)
             for chat in _get_cchats(bot, ch["id"]):
@@ -375,24 +388,20 @@ def group_topic(bot: DeltaBot, args: list, message: Message, replies: Replies) -
         addr = message.get_sender_contact().addr
         g = db.get_group(message.chat.id)
         if not g:
-            _add_group(bot, message.chat.id, as_admin=bot.is_admin(addr))
-            g = db.get_group(message.chat.id)
-            assert g is not None
+            replies.add(text="❌ This group is not public")
+            return
         db.upsert_group(g["id"], new_topic)
         replies.add(text=text.format(addr, new_topic))
         return
 
     g = db.get_channel(message.chat.id) or db.get_group(message.chat.id)
     if not g:
-        addr = message.get_sender_contact().addr
-        _add_group(bot, message.chat.id, as_admin=bot.is_admin(addr))
-        g = db.get_group(message.chat.id)
-        assert g is not None
-    replies.add(text=g["topic"] or "-", quote=message)
+        replies.add(text="❌ This group is not public")
+    else:
+        replies.add(text=g["topic"] or "-", quote=message)
 
 
-@simplebot.command
-def group_remove(bot: DeltaBot, args: list, message: Message, replies: Replies) -> None:
+def remove_cmd(bot: DeltaBot, args: list, message: Message, replies: Replies) -> None:
     """Remove the member with the given address from the group with the given id. If no address is provided, removes yourself from group/channel."""
     sender = message.get_sender_contact()
 
@@ -438,7 +447,7 @@ def group_remove(bot: DeltaBot, args: list, message: Message, replies: Replies) 
             g.remove_contact(sender)
 
 
-def cmd_chan(bot: DeltaBot, payload: str, message: Message, replies: Replies) -> None:
+def chan_cmd(bot: DeltaBot, payload: str, message: Message, replies: Replies) -> None:
     """Create a new channel with the given name."""
     if not payload:
         replies.add(text="❌ You must provide a channel name")
@@ -483,13 +492,6 @@ def _get_cchats(bot: DeltaBot, cgid: int, include_admin: bool = False) -> Genera
             db.remove_cchat(gid)
 
 
-def _add_group(bot: DeltaBot, gid: int, as_admin=False) -> None:
-    if as_admin or _getdefault(bot, "allow_groups") == "1":
-        db.upsert_group(gid, None)
-    else:
-        bot.get_chat(gid).remove_contact(bot.self_contact)
-
-
 def _add_contact(chat: Chat, contact: Contact) -> None:
     img_path = chat.get_profile_image()
     if img_path and not os.path.exists(img_path):
@@ -497,15 +499,20 @@ def _add_contact(chat: Chat, contact: Contact) -> None:
     chat.add_contact(contact)
 
 
-def _get_name(c: Contact) -> str:
+def _get_name(bot: DeltaBot, c: Contact) -> str:
     if c.name == c.addr:
         return c.addr
-    return "{}({})".format(c.name, c.addr)
+    if _getdefault(bot, "show_sender") == "1":
+        return f"{c.name}({c.addr})"
+    return c.name
 
 
 def _process_channels(bot: DeltaBot) -> None:
     while True:
-        _send_diffusion(bot, *channel_posts.get())
+        try:
+            _send_diffusion(bot, *channel_posts.get())
+        except Exception as ex:
+            bot.logger.exception(ex)
 
 
 def _send_diffusion(bot: DeltaBot, message: Message, chats: list) -> None:
@@ -513,7 +520,7 @@ def _send_diffusion(bot: DeltaBot, message: Message, chats: list) -> None:
     html = message.html
     filename = message.filename
     quote = message.quote
-    sender = _get_name(message.get_sender_contact())
+    sender = _get_name(bot, message.get_sender_contact())
     replies = Replies(message, logger=bot.logger)
     for chat in chats:
         replies.add(
@@ -525,7 +532,4 @@ def _send_diffusion(bot: DeltaBot, message: Message, chats: list) -> None:
             viewtype=message._view_type,
             chat=chat,
         )
-    try:
-        replies.send_reply_messages()
-    except ValueError as err:
-        bot.logger.exception(err)
+    replies.send_reply_messages()

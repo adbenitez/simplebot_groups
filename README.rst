@@ -21,6 +21,10 @@ Groups
 
 A `SimpleBot`_ plugin that allows users to join public groups and channels and publish their groups so other can join.
 
+If this plugin has collisions with commands from other plugins in your bot, you can set a command prefix like ``/group_`` for all commands::
+
+  simplebot -a bot@example.com db simplebot_chess/command_prefix group_
+
 Install
 -------
 
