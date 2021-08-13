@@ -9,11 +9,16 @@ import qrcode
 import simplebot
 from deltachat import Chat, Contact, Message
 from jinja2 import Template
+from pkg_resources import DistributionNotFound, get_distribution
 from simplebot.bot import DeltaBot, Replies
 
 from .db import DBManager
 
-__version__ = "1.0.0"
+try:
+    __version__ = get_distribution(__name__).version
+except DistributionNotFound:
+    # package is not installed
+    __version__ = "0.0.0.dev0-unknown"
 db: DBManager
 channel_posts: queue.Queue = queue.Queue()
 

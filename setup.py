@@ -22,7 +22,13 @@ if __name__ == "__main__":
 
     setup(
         name=MODULE_NAME,
-        version=version,
+        setup_requires=["setuptools_scm"],
+        use_scm_version={
+            "root": ".",
+            "relative_to": __file__,
+            "tag_regex": r"^(?P<prefix>v)?(?P<version>[^\+]+)(?P<suffix>.*)?$",
+            "git_describe_command": "git describe --dirty --tags --long --match v*.*.*",
+        },
         description=DESC,
         long_description=long_description,
         long_description_content_type="text/x-rst",
