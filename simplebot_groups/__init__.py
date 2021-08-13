@@ -111,7 +111,7 @@ def deltabot_ban(bot: DeltaBot, contact: Contact) -> None:
 
 @simplebot.filter
 def filter_messages(bot: DeltaBot, message: Message, replies: Replies) -> None:
-    """Process messages sent to channels."""
+    """I will distribute messages published by channels administrators."""
     ch = db.get_channel(message.chat.id)
     if ch and ch["admin"] == message.chat.id:
         if message.get_sender_contact() not in message.chat.get_contacts():
@@ -131,7 +131,10 @@ def filter_messages(bot: DeltaBot, message: Message, replies: Replies) -> None:
 
 
 def publish_cmd(message: Message, replies: Replies) -> None:
-    """Send this command in a group to make it public."""
+    """Send this command in a group to make it public.
+
+    To make your group private again just remove me from the group.
+    """
     chan = db.get_channel(message.chat.id)
     if chan:
         replies.add(text="❌ This is a channel")
@@ -213,7 +216,9 @@ def list_cmd(bot: DeltaBot, replies: Replies) -> None:
 {% endfor %}
 """
         ).render(
-            bot_addr=bot_addr, prefix=_getdefault(bot, "command_prefix", ""), chats=chats
+            bot_addr=bot_addr,
+            prefix=_getdefault(bot, "command_prefix", ""),
+            chats=chats,
         )
 
     groups = []
