@@ -32,7 +32,7 @@ def deltabot_init(bot: DeltaBot) -> None:
     _getdefault(bot, "max_file_size", "1048576")
     _getdefault(bot, "show_sender", "0")
 
-    prefix = _getdefault(bot, "command_prefix")
+    prefix = _getdefault(bot, "command_prefix", "")
 
     allow_groups = _getdefault(bot, "allow_groups", "1")
     bot.commands.register(
@@ -150,7 +150,7 @@ def info_cmd(bot: DeltaBot, message: Message, replies: Replies) -> None:
         replies.add(text="❌ This is not a group or channel")
         return
 
-    prefix = _getdefault(bot, "command_prefix")
+    prefix = _getdefault(bot, "command_prefix", "")
 
     ch = db.get_channel(message.chat.id)
     if ch:
@@ -213,7 +213,7 @@ def list_cmd(bot: DeltaBot, replies: Replies) -> None:
 {% endfor %}
 """
         ).render(
-            bot_addr=bot_addr, prefix=_getdefault(bot, "command_prefix"), chats=chats
+            bot_addr=bot_addr, prefix=_getdefault(bot, "command_prefix", ""), chats=chats
         )
 
     groups = []
@@ -284,7 +284,7 @@ def me_cmd(bot: DeltaBot, message: Message, replies: Replies) -> None:
                 groups.append((ch["name"], "c{}".format(ch["id"])))
                 break
 
-    prefix = _getdefault(bot, "command_prefix")
+    prefix = _getdefault(bot, "command_prefix", "")
     text = "{0}:\n⬅️ /{1}remove_{2}\n\n"
     replies.add(
         text="".join(text.format(name, prefix, id) for name, id in groups)
@@ -295,7 +295,7 @@ def me_cmd(bot: DeltaBot, message: Message, replies: Replies) -> None:
 def join_cmd(bot: DeltaBot, args: list, message: Message, replies: Replies) -> None:
     """Join the given group/channel."""
     sender = message.get_sender_contact()
-    prefix = _getdefault(bot, "command_prefix")
+    prefix = _getdefault(bot, "command_prefix", "")
     arg = args[0] if args else ""
     if arg.startswith("g"):
         gid = int(arg[1:])
