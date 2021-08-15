@@ -345,7 +345,7 @@ def join_cmd(bot: DeltaBot, args: list, message: Message, replies: Replies) -> N
             if img and os.path.exists(img):
                 g.set_profile_image(img)
             replies.add(
-                text="{ch['name']}\n\n{ch['topic'] or '-'}\n\n⬅️ /{prefix}remove_{arg}",
+                text=f"{ch['name']}\n\n{ch['topic'] or '-'}\n\n⬅️ /{prefix}remove_{arg}",
                 chat=g,
             )
             return
