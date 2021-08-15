@@ -21,12 +21,6 @@ class DBManager:
                 last_pub FLOAT NOT NULL DEFAULT 0)"""
             )
             self.db.execute(
-                """CREATE TABLE IF NOT EXISTS channel_images
-                (channel INTEGER PRIMARY KEY REFERENCES channels(id),
-                image BLOB NOT NULL,
-                extension TEXT NOT NULL)"""
-            )
-            self.db.execute(
                 """CREATE TABLE IF NOT EXISTS cchats
                 (id INTEGER PRIMARY KEY,
                 channel INTEGER NOT NULL REFERENCES channels(id))"""
@@ -61,7 +55,6 @@ class DBManager:
 
     def remove_channel(self, cgid: int) -> None:
         with self.db:
-            self.db.execute("DELETE FROM channel_images WHERE channel=?", (cgid,))
             self.db.execute("DELETE FROM cchats WHERE channel=?", (cgid,))
             self.db.execute("DELETE FROM channels WHERE id=?", (cgid,))
 
