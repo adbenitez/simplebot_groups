@@ -341,7 +341,7 @@ def join_cmd(bot: DeltaBot, args: list, message: Message, replies: Replies) -> N
                     return
             g = bot.create_group(ch["name"], [sender])
             db.add_cchat(g.id, ch["id"])
-            img = bot.get_chat(ch["id"]).get_profile_image()
+            img = bot.get_chat(ch["admin"]).get_profile_image()
             if img and os.path.exists(img):
                 g.set_profile_image(img)
             replies.add(
