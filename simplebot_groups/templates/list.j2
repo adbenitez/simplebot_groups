@@ -24,7 +24,16 @@
 		    {% if last_pub %}
 			📝 {{ last_pub }}
 		    {% endif %}
-		    <p>{{ topic }}</p>
+		    <p>
+			{% if topic %}
+			    {% for line in topic.split("\n") %}
+				{% if loop.index != 1 %}
+				    <br>
+				{% endif %}
+				{{ line }}
+			    {% endfor %}
+			{% endif %}
+		    </p>
 		</div>
 		<a class="w3-btn w3-large" href="mailto:{{ bot_addr }}?body=/{{ prefix }}remove_{{ gid }}">« Leave</a>
 		<a class="w3-btn w3-large w3-right" href="mailto:{{ bot_addr }}?body=/{{ prefix }}join_{{ gid }}">Join »</a>
