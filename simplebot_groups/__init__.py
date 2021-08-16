@@ -8,11 +8,11 @@ from typing import Generator
 import qrcode
 import simplebot
 from deltachat import Chat, Contact, Message
-from jinja2 import Template
 from pkg_resources import DistributionNotFound, get_distribution
 from simplebot.bot import DeltaBot, Replies
 
 from .db import DBManager
+from .templates import template
 
 try:
     __version__ = get_distribution(__name__).version
@@ -191,35 +191,7 @@ def list_cmd(bot: DeltaBot, replies: Replies) -> None:
     """Show the list of public groups and channels."""
 
     def get_list(bot_addr: str, chats: list) -> str:
-        return Template(
-            """
-<style>
-.w3-card-2{box-shadow:0 2px 4px 0 rgba(0,0,0,0.16),0 2px 10px 0 rgba(0,0,0,0.12) !important; margin-bottom: 15px;}
-.w3-btn{border:none;display:inline-block;outline:0;padding:6px 16px;vertical-align:middle;overflow:hidden;text-decoration:none !important;color:#fff;background-color:#5a6f78;text-align:center;cursor:pointer;white-space:nowrap}
-.w3-container:after,.w3-container:before{content:"";display:table;clear:both}
-.w3-container{padding:0.01em 16px}
-.w3-right{float:right !important}
-.w3-large{font-size:18px !important}
-.w3-delta,.w3-hover-delta:hover{color:#fff !important;background-color:#5a6f78 !important}
-</style>
-{% for name, topic, gid, last_pub, count in chats %}
-<div class="w3-card-2">
-<header class="w3-container w3-delta">
-<h2>{{ name }}</h2>
-</header>
-<div class="w3-container">
-<p>👤 {{ count }}</p>
-{% if last_pub %}
-📝 {{ last_pub }}
-{% endif %}
-<p>{{ topic }}</p>
-</div>
-<a class="w3-btn w3-large" href="mailto:{{ bot_addr }}?body=/{{ prefix }}remove_{{ gid }}">« Leave</a>
-<a class="w3-btn w3-large w3-right" href="mailto:{{ bot_addr }}?body=/{{ prefix }}join_{{ gid }}">Join »</a>
-</div>
-{% endfor %}
-"""
-        ).render(
+        return template.render(
             bot_addr=bot_addr,
             prefix=_getdefault(bot, "command_prefix", ""),
             chats=chats,
