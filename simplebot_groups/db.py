@@ -1,16 +1,28 @@
+"""Database management."""
+
 import sqlite3
 from typing import List, Optional
 
 
 class DBManager:
+    """Database manager"""
+
     def __init__(self, db_path: str) -> None:
         self.db = sqlite3.connect(db_path, check_same_thread=False)
         self.db.row_factory = sqlite3.Row
         with self.db:
+            self.db.execute("PRAGMA foreign_keys = ON;")
             self.db.execute(
                 """CREATE TABLE IF NOT EXISTS groups
                 (id INTEGER PRIMARY KEY,
                 topic TEXT)"""
+            )
+            self.db.execute(
+                """CREATE TABLE IF NOT EXISTS lastseens
+                (id INTEGER REFERENCES groups(id) ON DELETE CASCADE,
+                addr TEXT,
+                lastseen FLOAT NOT NULL,
+                PRIMARY KEY(id, addr))"""
             )
             self.db.execute(
                 """CREATE TABLE IF NOT EXISTS channels
@@ -23,7 +35,7 @@ class DBManager:
             self.db.execute(
                 """CREATE TABLE IF NOT EXISTS cchats
                 (id INTEGER PRIMARY KEY,
-                channel INTEGER NOT NULL REFERENCES channels(id))"""
+                channel INTEGER NOT NULL REFERENCES channels(id) ON DELETE CASCADE)"""
             )
 
     # ==== groups =====
@@ -43,6 +55,19 @@ class DBManager:
 
     def get_groups(self) -> List[sqlite3.Row]:
         return self.db.execute("SELECT * FROM groups").fetchall()
+
+    def update_lastseen(self, gid: int, addr: str, lastseen: float) -> None:
+        with self.db:
+            self.db.execute(
+                "REPLACE INTO lastseens VALUES (?,?,?)", (gid, addr, lastseen)
+            )
+
+    def remove_lastseen(self, gid: int, addr: str) -> None:
+        with self.db:
+            self.db.execute("DELETE FROM lastseens WHERE id=? AND addr=?", (gid, addr))
+
+    def get_lastseens(self) -> sqlite3.Cursor:
+        return self.db.execute("SELECT * FROM lastseens")
 
     # ==== channels =====
 
