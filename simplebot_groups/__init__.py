@@ -520,6 +520,7 @@ def _clean_groups(bot: DeltaBot) -> None:
             max_inactivity = 86400 * int(_getdefault(bot, "max_inactivity"))
             for row in db.get_lastseens():
                 if time.time() - row["lastseen"] > max_inactivity:
+                    bot.logger.debug("Removing inactive user: %s", row["addr"])
                     db.remove_lastseen(row["id"], row["addr"])
                     try:
                         bot.get_chat(row["id"]).remove_contact(row["addr"])
