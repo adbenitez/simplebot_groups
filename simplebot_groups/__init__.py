@@ -225,7 +225,7 @@ def list_cmd(bot: DeltaBot, replies: Replies) -> None:
         groups.append(
             (
                 chat.get_name(),
-                g["topic"] or "-",
+                g["topic"],
                 "g{}".format(chat.id),
                 None,
                 len(chat.get_contacts()),
@@ -249,7 +249,7 @@ def list_cmd(bot: DeltaBot, replies: Replies) -> None:
         channels.append(
             (
                 ch["name"],
-                ch["topic"] or "-",
+                ch["topic"],
                 "c{}".format(ch["id"]),
                 last_pub,
                 count,
@@ -352,7 +352,7 @@ def adminchan_cmd(
     if ch:
         sender = message.get_sender_contact()
         _add_contact(bot.get_chat(ch["admin"]), sender)
-        text = "{}\n\n{}".format(ch["name"], ch["topic"] or "-")
+        text = "{}\n\n{}".format(ch["name"], ch["topic"] or "")
         replies.add(text=text, chat=bot.get_chat(sender))
     else:
         replies.add(text="❌ Invalid ID")
@@ -397,7 +397,7 @@ def topic_cmd(bot: DeltaBot, payload: str, message: Message, replies: Replies) -
     if not g:
         replies.add(text="❌ This group is not public")
     else:
-        replies.add(text=g["topic"] or "-", quote=message)
+        replies.add(text=g["topic"] or "❌ No topic set", quote=message)
 
 
 def remove_cmd(bot: DeltaBot, args: list, message: Message, replies: Replies) -> None:
