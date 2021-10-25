@@ -44,10 +44,6 @@ To set maximum file size in channels::
 
   simplebot -a bot@example.com db -s simplebot_groups/max_file_size 1048576
 
-To show sender address in channels::
-
-  simplebot -a bot@example.com db -s simplebot_groups/show_sender 1
-
 To auto-remove members in public groups after some days of inactivity::
 
   simplebot -a bot@example.com db -s simplebot_groups/max_inactivity 7

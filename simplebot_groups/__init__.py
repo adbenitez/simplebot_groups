@@ -30,7 +30,6 @@ def deltabot_init(bot: DeltaBot) -> None:
 
     _getdefault(bot, "max_topic_size", "500")
     _getdefault(bot, "max_file_size", "1048576")
-    _getdefault(bot, "show_sender", "0")
     _getdefault(bot, "max_inactivity", "-1")
 
     prefix = _getdefault(bot, "command_prefix", "")
@@ -138,7 +137,7 @@ def filter_messages(bot: DeltaBot, message: Message, replies: Replies) -> None:
             return
 
         db.set_channel_last_pub(ch["id"], time.time())
-        channel_posts.put((message, _get_cchats(bot, ch["id"])))
+        channel_posts.put((ch["name"], message, _get_cchats(bot, ch["id"])))
         replies.add(text="✔️Published", quote=message)
     elif ch:
         replies.add(text="❌ Only channel operators can do that.")
@@ -501,9 +500,7 @@ def _add_contact(chat: Chat, contact: Contact) -> None:
 def _get_name(bot: DeltaBot, c: Contact) -> str:
     if c.name == c.addr:
         return c.addr
-    if _getdefault(bot, "show_sender") == "1":
-        return f"{c.name}({c.addr})"
-    return c.name
+    return f"{c.name}({c.addr})"
 
 
 def _process_channels(bot: DeltaBot) -> None:
@@ -531,12 +528,13 @@ def _clean_groups(bot: DeltaBot) -> None:
         time.sleep(3600)
 
 
-def _send_diffusion(bot: DeltaBot, message: Message, chats: list) -> None:
+def _send_diffusion(bot: DeltaBot, channel_name: str, message: Message, chats: list) -> None:
     text = message.text
     html = message.html
     filename = message.filename
     quote = message.quote
-    sender = _get_name(bot, message.get_sender_contact())
+    contact = message.get_sender_contact()
+    sender = contact.name if contact.name != contact.addr else channel_name
     replies = Replies(message, logger=bot.logger)
     for chat in chats:
         replies.add(
