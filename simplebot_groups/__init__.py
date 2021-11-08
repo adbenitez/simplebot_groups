@@ -187,22 +187,20 @@ def info_cmd(bot: DeltaBot, message: Message, replies: Replies) -> None:
         )
         return
 
+    text = message.chat.get_name()
     group = db.get_group(message.chat.id)
-    if not group:
-        replies.add(text="❌ This group is not public")
-        return
+    if group:
+        count = len(message.chat.get_contacts())
+        text += f"\n👤 {count}\n{group['topic'] or ''}\n\n⬅️ /{prefix}remove_g{group['id']}\n➡️ /{prefix}join_g{group['id']}"
+    else:
+        text += "\n\nPrivate group, use /{prefix}publish to make it public"
 
-    chat = bot.get_chat(group["id"])
-    img = qrcode.make(chat.get_join_qr())
+    img = qrcode.make(message.chat.get_join_qr())
     buffer = io.BytesIO()
     img.save(buffer, format="jpeg")
     buffer.seek(0)
-    count = len(bot.get_chat(group["id"]).get_contacts())
-    replies.add(
-        text=f"{chat.get_name()}\n👤 {count}\n{group['topic'] or '-'}\n\n⬅️ /{prefix}remove_g{group['id']}\n➡️ /{prefix}join_g{group['id']}",
-        filename="img.jpg",
-        bytefile=buffer,
-    )
+
+    replies.add(text=text, filename="img.jpg", bytefile=buffer)
 
 
 def list_cmd(bot: DeltaBot, replies: Replies) -> None:
