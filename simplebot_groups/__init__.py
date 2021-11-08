@@ -368,12 +368,10 @@ def topic_cmd(bot: DeltaBot, payload: str, message: Message, replies: Replies) -
         if len(payload) > max_size:
             payload = payload[:max_size] + "..."
 
-        text = "** {} changed topic to:\n{}"
+        text = f"** Topic changed to:\n{payload}"
 
         ch = db.get_channel(message.chat.id)
         if ch and ch["admin"] == message.chat.id:
-            name = _get_name(bot, message.get_sender_contact())
-            text = text.format(name, payload)
             db.set_channel_topic(ch["id"], payload)
             for chat in _get_cchats(bot, ch["id"]):
                 replies.add(text=text, chat=chat)
@@ -383,13 +381,12 @@ def topic_cmd(bot: DeltaBot, payload: str, message: Message, replies: Replies) -
             replies.add(text="❌ Only channel operators can do that.")
             return
 
-        addr = message.get_sender_contact().addr
         g = db.get_group(message.chat.id)
         if not g:
             replies.add(text="❌ This group is not public")
             return
         db.upsert_group(g["id"], payload)
-        replies.add(text=text.format(addr, payload))
+        replies.add(text=text)
         return
 
     g = db.get_channel(message.chat.id) or db.get_group(message.chat.id)
@@ -497,12 +494,6 @@ def _add_contact(chat: Chat, contact: Contact) -> None:
     chat.add_contact(contact)
 
 
-def _get_name(bot: DeltaBot, c: Contact) -> str:
-    if c.name == c.addr:
-        return c.addr
-    return f"{c.name}({c.addr})"
-
-
 def _process_channels(bot: DeltaBot) -> None:
     while True:
         try:
@@ -528,7 +519,9 @@ def _clean_groups(bot: DeltaBot) -> None:
         time.sleep(3600)
 
 
-def _send_diffusion(bot: DeltaBot, channel_name: str, message: Message, chats: list) -> None:
+def _send_diffusion(
+    bot: DeltaBot, channel_name: str, message: Message, chats: list
+) -> None:
     text = message.text
     html = message.html
     filename = message.filename
