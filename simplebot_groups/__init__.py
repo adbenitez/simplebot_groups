@@ -193,7 +193,7 @@ def info_cmd(bot: DeltaBot, message: Message, replies: Replies) -> None:
         count = len(message.chat.get_contacts())
         text += f"\n👤 {count}\n{group['topic'] or ''}\n\n⬅️ /{prefix}remove_g{group['id']}\n➡️ /{prefix}join_g{group['id']}"
     else:
-        text += "\n\nPrivate group, use /{prefix}publish to make it public"
+        text += f"\n\nPrivate group, use /{prefix}publish to make it public"
 
     img = qrcode.make(message.chat.get_join_qr())
     buffer = io.BytesIO()
