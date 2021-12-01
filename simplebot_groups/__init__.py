@@ -30,7 +30,6 @@ def deltabot_init(bot: DeltaBot) -> None:
 
     _getdefault(bot, "max_topic_size", "500")
     _getdefault(bot, "max_file_size", "1048576")
-    _getdefault(bot, "max_inactivity", "-1")
 
     prefix = _getdefault(bot, "command_prefix", "")
 
@@ -54,7 +53,6 @@ def deltabot_init(bot: DeltaBot) -> None:
 @simplebot.hookimpl
 def deltabot_start(bot: DeltaBot) -> None:
     Thread(target=_process_channels, args=(bot,), daemon=True).start()
-    Thread(target=_clean_groups, args=(bot,), daemon=True).start()
 
 
 @simplebot.hookimpl
@@ -75,17 +73,6 @@ def deltabot_member_removed(bot: DeltaBot, chat: Chat, contact: Contact) -> None
                 db.remove_channel(ch["id"])
             else:
                 db.remove_cchat(chat.id)
-    else:
-        if db.get_group(chat.id):
-            db.remove_lastseen(chat.id, contact.addr)
-
-
-@simplebot.hookimpl
-def deltabot_member_added(bot: DeltaBot, chat: Chat, contact: Contact) -> None:
-    if bot.self_contact == contact:
-        return
-    if db.get_group(chat.id):
-        db.update_lastseen(chat.id, contact.addr, time.time())
 
 
 @simplebot.hookimpl
@@ -141,11 +128,9 @@ def filter_messages(bot: DeltaBot, message: Message, replies: Replies) -> None:
         replies.add(text="✔️Published", quote=message)
     elif ch:
         replies.add(text="❌ Only channel operators can do that.")
-    elif db.get_group(message.chat.id):
-        db.update_lastseen(message.chat.id, sender.addr, time.time())
 
 
-def publish_cmd(bot: DeltaBot, message: Message, replies: Replies) -> None:
+def publish_cmd(message: Message, replies: Replies) -> None:
     """Send this command in a group to make it public.
 
     To make your group private again just remove me from the group.
@@ -163,9 +148,6 @@ def publish_cmd(bot: DeltaBot, message: Message, replies: Replies) -> None:
             replies.add(text="❌ This group is already public.")
         else:
             db.upsert_group(message.chat.id, None)
-            for contact in message.chat.get_contacts():
-                if contact != bot.self_contact:
-                    db.update_lastseen(message.chat.id, contact.addr, time.time())
             replies.add(text="☑️ Group published")
 
 
@@ -498,23 +480,6 @@ def _process_channels(bot: DeltaBot) -> None:
             _send_diffusion(bot, *channel_posts.get())
         except Exception as ex:
             bot.logger.exception(ex)
-
-
-def _clean_groups(bot: DeltaBot) -> None:
-    while True:
-        try:
-            max_inactivity = 86400 * int(_getdefault(bot, "max_inactivity"))
-            for row in [] if max_inactivity <= 0 else db.get_lastseens():
-                if time.time() - row["lastseen"] > max_inactivity:
-                    bot.logger.debug("Removing inactive user: %s", row["addr"])
-                    db.remove_lastseen(row["id"], row["addr"])
-                    try:
-                        bot.get_chat(row["id"]).remove_contact(row["addr"])
-                    except ValueError as ex:
-                        bot.logger.exception(ex)
-        except Exception as ex:
-            bot.logger.exception(ex)
-        time.sleep(3600)
 
 
 def _send_diffusion(

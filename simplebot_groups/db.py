@@ -18,13 +18,6 @@ class DBManager:
                 topic TEXT)"""
             )
             self.db.execute(
-                """CREATE TABLE IF NOT EXISTS lastseens
-                (id INTEGER REFERENCES groups(id) ON DELETE CASCADE,
-                addr TEXT,
-                lastseen FLOAT NOT NULL,
-                PRIMARY KEY(id, addr))"""
-            )
-            self.db.execute(
                 """CREATE TABLE IF NOT EXISTS channels
                 (id INTEGER PRIMARY KEY,
                 name TEXT NOT NULL,
@@ -55,19 +48,6 @@ class DBManager:
 
     def get_groups(self) -> List[sqlite3.Row]:
         return self.db.execute("SELECT * FROM groups").fetchall()
-
-    def update_lastseen(self, gid: int, addr: str, lastseen: float) -> None:
-        with self.db:
-            self.db.execute(
-                "REPLACE INTO lastseens VALUES (?,?,?)", (gid, addr, lastseen)
-            )
-
-    def remove_lastseen(self, gid: int, addr: str) -> None:
-        with self.db:
-            self.db.execute("DELETE FROM lastseens WHERE id=? AND addr=?", (gid, addr))
-
-    def get_lastseens(self) -> sqlite3.Cursor:
-        return self.db.execute("SELECT * FROM lastseens")
 
     # ==== channels =====
 

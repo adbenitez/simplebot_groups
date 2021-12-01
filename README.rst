@@ -44,10 +44,6 @@ To set maximum file size in channels::
 
   simplebot -a bot@example.com db -s simplebot_groups/max_file_size 1048576
 
-To auto-remove members in public groups after some days of inactivity::
-
-  simplebot -a bot@example.com db -s simplebot_groups/max_inactivity 7
-
 To disable channel creation for non-admins::
 
   simplebot -a bot@example.com db -s simplebot_groups/allow_channels 0
