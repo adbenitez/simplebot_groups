@@ -112,9 +112,7 @@ def filter_messages(bot: DeltaBot, message: Message, replies: Replies) -> None:
     if ch and ch["admin"] == message.chat.id:
         max_size = int(_getdefault(bot, "max_file_size"))
         if message.filename and os.path.getsize(message.filename) > max_size:
-            replies.add(
-                text="❌ File too big, up to {} Bytes are allowed".format(max_size)
-            )
+            replies.add(text=f"❌ File too big, up to {max_size} Bytes are allowed")
             return
 
         db.set_channel_last_pub(ch["id"], time.time())
@@ -199,7 +197,7 @@ def list_cmd(bot: DeltaBot, replies: Replies) -> None:
             (
                 chat.get_name(),
                 g["topic"],
-                "g{}".format(chat.id),
+                f"g{chat.id}",
                 None,
                 len(chat.get_contacts()),
             )
@@ -207,7 +205,7 @@ def list_cmd(bot: DeltaBot, replies: Replies) -> None:
     total_groups = len(groups)
     if groups:
         groups.sort(key=lambda g: g[-1], reverse=True)
-        text = "⬇️ Groups ({}) ⬇️".format(total_groups)
+        text = f"⬇️ Groups ({total_groups}) ⬇️"
         replies.add(text=text, html=get_list(bot.self_contact.addr, groups))
 
     channels = []
@@ -223,7 +221,7 @@ def list_cmd(bot: DeltaBot, replies: Replies) -> None:
             (
                 ch["name"],
                 ch["topic"],
-                "c{}".format(ch["id"]),
+                f"c{ch['id']}",
                 last_pub,
                 count,
             )
@@ -231,7 +229,7 @@ def list_cmd(bot: DeltaBot, replies: Replies) -> None:
     total_channels = len(channels)
     if channels:
         channels.sort(key=lambda g: g[-1], reverse=True)
-        text = "⬇️ Channels ({}) ⬇️".format(total_channels)
+        text = f"⬇️ Channels ({total_channels}) ⬇️"
         replies.add(text=text, html=get_list(bot.self_contact.addr, channels))
 
     if 0 == total_groups == total_channels:
@@ -249,12 +247,12 @@ def me_cmd(bot: DeltaBot, message: Message, replies: Replies) -> None:
             db.remove_group(group["id"])
             continue
         if sender in contacts:
-            groups.append((g.get_name(), "g{}".format(g.id)))
+            groups.append((g.get_name(), f"g{g.id}"))
 
     for ch in db.get_channels():
         for c in _get_cchats(bot, ch["id"]):
             if sender in c.get_contacts():
-                groups.append((ch["name"], "c{}".format(ch["id"])))
+                groups.append((ch["name"], f"c{ch['id']}"))
                 break
 
     prefix = _getdefault(bot, "command_prefix", "")
@@ -278,9 +276,7 @@ def join_cmd(bot: DeltaBot, args: list, message: Message, replies: Replies) -> N
             contacts = g.get_contacts()
             if sender in contacts:
                 replies.add(
-                    text="❌ {}, you are already a member of this group".format(
-                        sender.addr
-                    ),
+                    text=f"❌ {sender.addr}, you are already a member of this group",
                     chat=g,
                 )
             else:
@@ -297,9 +293,7 @@ def join_cmd(bot: DeltaBot, args: list, message: Message, replies: Replies) -> N
             for g in _get_cchats(bot, ch["id"], include_admin=True):
                 if sender in g.get_contacts():
                     replies.add(
-                        text="❌ {}, you are already a member of this channel".format(
-                            sender.addr
-                        ),
+                        text=f"❌ {sender.addr}, you are already a member of this channel",
                         chat=g,
                     )
                     return
