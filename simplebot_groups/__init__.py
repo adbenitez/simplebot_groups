@@ -5,9 +5,11 @@ import time
 from threading import Thread
 from typing import Generator
 
-import qrcode
 import simplebot
+from cairosvg import svg2png
 from deltachat import Chat, Contact, Message
+from deltachat.capi import lib
+from deltachat.cutil import from_dc_charpointer
 from simplebot.bot import DeltaBot, Replies
 
 from .db import DBManager
@@ -145,13 +147,14 @@ def publish_cmd(message: Message, replies: Replies) -> None:
 
 def info_cmd(bot: DeltaBot, message: Message, replies: Replies) -> None:
     """Show the group/channel info."""
-    if not message.chat.is_group():
+    chat = message.chat
+    if not chat.is_group():
         replies.add(text="❌ This is not a group or channel")
         return
 
     prefix = _getdefault(bot, "command_prefix", "")
 
-    ch = db.get_channel(message.chat.id)
+    ch = db.get_channel(chat.id)
     if ch:
         count = sum(
             map(lambda g: len(g.get_contacts()) - 1, _get_cchats(bot, ch["id"]))
@@ -161,20 +164,20 @@ def info_cmd(bot: DeltaBot, message: Message, replies: Replies) -> None:
         )
         return
 
-    text = message.chat.get_name()
-    group = db.get_group(message.chat.id)
+    group = db.get_group(chat.id)
     if group:
-        count = len(message.chat.get_contacts())
-        text += f"\n👤 {count}\n{group['topic'] or ''}\n\n⬅️ /{prefix}remove_g{group['id']}\n➡️ /{prefix}join_g{group['id']}"
+        count = len(chat.get_contacts())
+        text = f"👤 {count}\n{group['topic'] or ''}\n\n⬅️ /{prefix}remove_g{group['id']}\n➡️ /{prefix}join_g{group['id']}"
     else:
-        text += f"\n\nPrivate group, use /{prefix}publish to make it public"
+        text = f"Private group, use /{prefix}publish to make it public"
 
-    img = qrcode.make(message.chat.get_join_qr())
-    buffer = io.BytesIO()
-    img.save(buffer, format="jpeg")
-    buffer.seek(0)
-
-    replies.add(text=text, filename="img.jpg", bytefile=buffer)
+    svg = from_dc_charpointer(
+        lib.dc_get_securejoin_qr_svg(bot.account._dc_context, chat.id)
+    )
+    png = io.BytesIO()
+    svg2png(bytestring=svg, write_to=png)
+    png.seek(0)
+    replies.add(text=text, filename="img.png", bytefile=png)
 
 
 def list_cmd(bot: DeltaBot, replies: Replies) -> None:
