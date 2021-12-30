@@ -41,7 +41,7 @@ def deltabot_init(bot: DeltaBot) -> None:
     bot.commands.register(func=topic_cmd, name=f"/{prefix}topic")
     bot.commands.register(func=adminchan_cmd, name=f"/{prefix}adminchan", admin=True)
     bot.commands.register(func=join_cmd, name=f"/{prefix}join")
-    bot.commands.register(func=me_cmd, name=f"/{prefix}me")
+    bot.commands.register(func=me_cmd, name=f"/{prefix}joined")
     bot.commands.register(func=list_cmd, name=f"/{prefix}list")
     bot.commands.register(func=info_cmd, name=f"/{prefix}info")
 
