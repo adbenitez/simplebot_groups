@@ -48,7 +48,7 @@ def deltabot_init(bot: DeltaBot) -> None:
     desc = ""
     if allow_groups:
         desc = f"Add me to a group and send /{prefix}publish to make it public.\n"
-    desc += f"Add me to a group and send /{prefix}info to get an invitation QR."
+    desc += f"Add me to a group and send /{prefix}info to get an invitation QR for that group."
     bot.filters.register(func=filter_messages, help=desc)
 
 
