@@ -45,6 +45,12 @@ def deltabot_init(bot: DeltaBot) -> None:
     bot.commands.register(func=list_cmd, name=f"/{prefix}list")
     bot.commands.register(func=info_cmd, name=f"/{prefix}info")
 
+    desc = ""
+    if allow_groups:
+        desc = f"Add me to a group and send /{prefix}publish to make it public.\n"
+    desc += f"Add me to a group and send /{prefix}info to get an invitation QR."
+    bot.filters.register(func=filter_messages, help=desc)
+
 
 @simplebot.hookimpl
 def deltabot_start(bot: DeltaBot) -> None:
@@ -102,9 +108,7 @@ def deltabot_ban(bot: DeltaBot, contact: Contact) -> None:
                 chat.remove_contact(contact)
 
 
-@simplebot.filter
 def filter_messages(bot: DeltaBot, message: Message, replies: Replies) -> None:
-    """I will distribute messages published by channels administrators."""
     if not message.chat.is_group():
         return
     sender = message.get_sender_contact()
@@ -169,7 +173,7 @@ def info_cmd(bot: DeltaBot, message: Message, replies: Replies) -> None:
         count = len(chat.get_contacts())
         text = f"👤 {count}\n{group['topic'] or ''}\n\n⬅️ /{prefix}remove_g{group['id']}\n➡️ /{prefix}join_g{group['id']}"
     else:
-        text = f"Private group, use /{prefix}publish to make it public"
+        text = "Private group, share this QR to invite friends to join"
 
     svg = from_dc_charpointer(
         lib.dc_get_securejoin_qr_svg(bot.account._dc_context, chat.id)
