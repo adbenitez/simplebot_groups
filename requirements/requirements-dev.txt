@@ -4,4 +4,4 @@ black==22.3.0
 mypy==0.930
 isort==5.10.1
 pylint==2.13.9
-pylama==8.3.6
+pylama==8.3.8
