@@ -29,13 +29,13 @@ def deltabot_init(bot: DeltaBot) -> None:
 
     prefix = _getdefault(bot, "command_prefix", "")
 
-    allow_groups = _getdefault(bot, "allow_groups", "1")
+    allow_groups = _getdefault(bot, "allow_groups", "1") == "1"
     bot.commands.register(
-        func=publish_cmd, name=f"/{prefix}publish", admin=(allow_groups != "1")
+        func=publish_cmd, name=f"/{prefix}publish", admin=not allow_groups
     )
-    allow_channels = _getdefault(bot, "allow_channels", "1")
+    allow_channels = _getdefault(bot, "allow_channels", "1") == "1"
     bot.commands.register(
-        func=chan_cmd, name=f"/{prefix}chan", admin=(allow_channels != "1")
+        func=chan_cmd, name=f"/{prefix}chan", admin=not allow_channels
     )
     bot.commands.register(func=remove_cmd, name=f"/{prefix}remove")
     bot.commands.register(func=topic_cmd, name=f"/{prefix}topic")
